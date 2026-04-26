@@ -50,7 +50,7 @@ app.use("/uploads", express.static(uploadDir));
 /* =========================
    🔌 MongoDB Connection
 ========================= */
-mongoose.connect("mongodb://127.0.0.1:27017/safeguard")
+mongoose.connect(process.env.MONGO_URL || process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/safeguard")
   .then(() => console.log("✅ MongoDB Connected"))
   .catch((err) => console.log(err));
 
