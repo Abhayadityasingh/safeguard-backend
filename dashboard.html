@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Live Tracking Dashboard</title>
+
+  <!-- Google Maps -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY"></script>
+
+  <!-- Socket.io -->
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial;
+      background: #111;
+      color: white;
+      text-align: center;
+    }
+
+    #map {
+      height: 80vh;
+      width: 100%;
+    }
+
+    .info {
+      padding: 10px;
+      background: #222;
+    }
+  </style>
+</head>
+
+<body>
+
+<h2>🚨 Live Safety Tracking</h2>
+
+<div id="map"></div>
+
+<div class="info">
+  <p id="status">Waiting for data...</p>
+</div>
+
+<script>
+let map;
+let marker;
+let pathCoordinates = [];
+let pathLine;
+
+const socket = io("http://localhost:5000");
+
+// Initialize Map
+function initMap() {
+  const defaultLocation = { lat: 20.5937, lng: 78.9629 }; // India center
+
+  map = new google.maps.Map(document.getElementById("map"), {
+    zoom: 5,
+    center: defaultLocation,
+  });
+
+  marker = new google.maps.Marker({
+    position: defaultLocation,
+    map: map,
+  });
+
+  pathLine = new google.maps.Polyline({
+    path: pathCoordinates,
+    geodesic: true,
+    strokeColor: "#FF0000",
+    strokeOpacity: 1.0,
+    strokeWeight: 3,
+  });
+
+  pathLine.setMap(map);
+}
+
+// Listen for live updates
+socket.on("locationUpdate", (data) => {
+  const newPos = { lat: data.lat, lng: data.lng };
+
+  // Move marker
+  marker.setPosition(newPos);
+
+  // Center map
+  map.setCenter(newPos);
+
+  // Add to path
+  pathCoordinates.push(newPos);
+  pathLine.setPath(pathCoordinates);
+
+  // Update status
+  document.getElementById("status").innerText =
+    "📍 Live Tracking Active | Last update: " + new Date().toLocaleTimeString();
+});
+
+// Load map
+window.onload = initMap;
+</script>
+
+</body>
+</html>
