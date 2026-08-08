@@ -130,10 +130,17 @@ const MediaLog = mongoose.model("MediaLog", mediaSchema);
 /* =========================
    📱 Twilio Setup
 ========================= */
-const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
+let twilioClient = null;
+try {
+  if (process.env.TWILIO_ACCOUNT_SID?.startsWith('AC')) {
+    twilioClient = twilio(
+      process.env.TWILIO_ACCOUNT_SID,
+      process.env.TWILIO_AUTH_TOKEN
+    );
+  }
+} catch(e) {
+  console.log('⚠️ Twilio not configured');
+}
 
 const sendSMS = async (to, message) => {
   try {
