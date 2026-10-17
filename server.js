@@ -13,6 +13,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "SafeGuard Backend Running",
+    tracker: "/tracker"
+  });
+});
+
 /* =========================
    🔌 HTTP + Socket.IO FIRST
    (so io is available in all routes)
@@ -206,116 +214,132 @@ This is an automated emergency alert.`;
 /* =========================
    🗺️ TRACKER PAGE
 ========================= */
+// app.get("/tracker", (req, res) => {
+//   res.send(`<!DOCTYPE html>
+// <html>
+// <head>
+//   <title>SafeGuard — Live Tracker</title>
+//   <meta name="viewport" content="width=device-width, initial-scale=1">
+//   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+//   <style>
+//     * { margin:0; padding:0; box-sizing:border-box; }
+//     body { background:#0a0a0f; color:white; font-family:system-ui,sans-serif; }
+//     #topbar {
+//       position:fixed; top:0; left:0; right:0; z-index:100;
+//       background:#0f0f1a; border-bottom:1px solid #1a1a2e;
+//       padding:10px 16px; display:flex; align-items:center;
+//       justify-content:space-between;
+//     }
+//     .brand { font-size:14px; font-weight:500; color:#e85d75; }
+//     #status {
+//       font-size:11px; padding:4px 12px; border-radius:20px;
+//       background:#1a0a0e; border:1px solid #e85d75; color:#e85d75;
+//     }
+//     #status.live { background:#14532d; border-color:#4ade80; color:#4ade80; }
+//     #status.sos  { background:#450a0a; border-color:#f87171; color:#f87171; }
+//     #map { width:100vw; height:calc(100vh - 90px); border:none; margin-top:52px; }
+//     #bar {
+//       position:fixed; bottom:0; left:0; right:0;
+//       background:#0f0f1a; border-top:1px solid #1a1a2e;
+//       padding:8px 16px; font-size:10px; color:#555;
+//       overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+//     }
+//     #sosBox {
+//       display:none; position:fixed; top:60px; left:50%;
+//       transform:translateX(-50%); background:#450a0a;
+//       border:1px solid #f87171; border-radius:12px;
+//       padding:12px 20px; text-align:center; z-index:200; min-width:240px;
+//     }
+//     .sos-title { color:#f87171; font-size:14px; font-weight:600; }
+//     .sos-sub   { color:#7a3040; font-size:11px; margin-top:3px; }
+//     #mediaBox {
+//       display:none; position:fixed; bottom:48px; right:16px;
+//       background:#0f0f1a; border:1px solid #1a1a2e; border-radius:12px;
+//       padding:10px; z-index:150; max-width:200px;
+//     }
+//     #mediaBox img { width:100%; border-radius:8px; }
+//     #mediaBox audio { width:100%; margin-top:6px; }
+//     #mediaTitle { font-size:10px; color:#e85d75; margin-bottom:6px; font-weight:600; }
+//   </style>
+// </head>
+// <body>
+//   <div id="topbar">
+//     <div class="brand">🛡️ SafeGuard Tracker</div>
+//     <div id="status">⏳ Waiting...</div>
+//   </div>
+//   <div id="sosBox">
+//     <div class="sos-title">🚨 SOS TRIGGERED</div>
+//     <div class="sos-sub" id="sosDetail"></div>
+//   </div>
+//   <div id="mediaBox">
+//     <div id="mediaTitle">SOS Evidence</div>
+//     <img id="mediaPhoto" src="" style="display:none" alt="SOS Photo" />
+//     <audio id="mediaAudio" controls style="display:none"></audio>
+//   </div>
+//   <iframe id="map" src="about:blank"></iframe>
+//   <div id="bar">No location yet — waiting for device...</div>
+//   <script>
+//     const socket = io();
+//     const hist = [];
+
+//     // socket.on("locationUpdate", function(d) {
+//     //   document.getElementById("map").src =
+//     //     "https://maps.google.com/maps?q=" + d.lat + "," + d.lng + "&z=17&output=embed";
+//     //   var s = document.getElementById("status");
+//     //   s.className = "live";
+//     //   s.textContent = "📍 Live · " + d.lat.toFixed(5) + ", " + d.lng.toFixed(5);
+//     //   hist.unshift(d.lat.toFixed(3) + "," + d.lng.toFixed(3) + " @ " + new Date().toLocaleTimeString());
+//     //   document.getElementById("bar").textContent = "Path: " + hist.slice(0,5).join(" → ");
+//     // });
+//     socket.on("locationUpdate", updateTracker);
+
+// socket.on("connect", function() {
+//   console.log("Tracker connected to backend");
+// });
+
+// socket.on("connect_error", function(error) {
+//   console.error("Socket connection failed:", error.message);
+// });
+
+//     socket.on("sosAlert", function(d) {
+//       var b = document.getElementById("sosBox");
+//       b.style.display = "block";
+//       document.getElementById("sosDetail").textContent =
+//         d.trigger + " at " + new Date(d.time).toLocaleTimeString();
+//       document.getElementById("status").className = "sos";
+//       document.getElementById("status").textContent = "🚨 SOS ACTIVE";
+//       setTimeout(function(){ b.style.display = "none"; }, 15000);
+//     });
+
+//     socket.on("sosPhoto", function(d) {
+//       var box = document.getElementById("mediaBox");
+//       var img = document.getElementById("mediaPhoto");
+//       box.style.display = "block";
+//       img.style.display = "block";
+//       img.src = d.url;
+//     });
+
+//     socket.on("sosAudio", function(d) {
+//       var box = document.getElementById("mediaBox");
+//       var audio = document.getElementById("mediaAudio");
+//       box.style.display = "block";
+//       audio.style.display = "block";
+//       audio.src = d.url;
+//     });
+
+//     socket.on("bluetoothSOS", function(d) {
+//       alert("🔵 Bluetooth SOS — " + d.peersFound + " peers found nearby");
+//     });
+//   </script>
+// </body>
+// </html>`);
+// });
+
+/* =========================
+   🗺️ TRACKER PAGE
+========================= */
 app.get("/tracker", (req, res) => {
-  res.send(`<!DOCTYPE html>
-<html>
-<head>
-  <title>SafeGuard — Live Tracker</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-  <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { background:#0a0a0f; color:white; font-family:system-ui,sans-serif; }
-    #topbar {
-      position:fixed; top:0; left:0; right:0; z-index:100;
-      background:#0f0f1a; border-bottom:1px solid #1a1a2e;
-      padding:10px 16px; display:flex; align-items:center;
-      justify-content:space-between;
-    }
-    .brand { font-size:14px; font-weight:500; color:#e85d75; }
-    #status {
-      font-size:11px; padding:4px 12px; border-radius:20px;
-      background:#1a0a0e; border:1px solid #e85d75; color:#e85d75;
-    }
-    #status.live { background:#14532d; border-color:#4ade80; color:#4ade80; }
-    #status.sos  { background:#450a0a; border-color:#f87171; color:#f87171; }
-    #map { width:100vw; height:calc(100vh - 90px); border:none; margin-top:52px; }
-    #bar {
-      position:fixed; bottom:0; left:0; right:0;
-      background:#0f0f1a; border-top:1px solid #1a1a2e;
-      padding:8px 16px; font-size:10px; color:#555;
-      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-    }
-    #sosBox {
-      display:none; position:fixed; top:60px; left:50%;
-      transform:translateX(-50%); background:#450a0a;
-      border:1px solid #f87171; border-radius:12px;
-      padding:12px 20px; text-align:center; z-index:200; min-width:240px;
-    }
-    .sos-title { color:#f87171; font-size:14px; font-weight:600; }
-    .sos-sub   { color:#7a3040; font-size:11px; margin-top:3px; }
-    #mediaBox {
-      display:none; position:fixed; bottom:48px; right:16px;
-      background:#0f0f1a; border:1px solid #1a1a2e; border-radius:12px;
-      padding:10px; z-index:150; max-width:200px;
-    }
-    #mediaBox img { width:100%; border-radius:8px; }
-    #mediaBox audio { width:100%; margin-top:6px; }
-    #mediaTitle { font-size:10px; color:#e85d75; margin-bottom:6px; font-weight:600; }
-  </style>
-</head>
-<body>
-  <div id="topbar">
-    <div class="brand">🛡️ SafeGuard Tracker</div>
-    <div id="status">⏳ Waiting...</div>
-  </div>
-  <div id="sosBox">
-    <div class="sos-title">🚨 SOS TRIGGERED</div>
-    <div class="sos-sub" id="sosDetail"></div>
-  </div>
-  <div id="mediaBox">
-    <div id="mediaTitle">SOS Evidence</div>
-    <img id="mediaPhoto" src="" style="display:none" alt="SOS Photo" />
-    <audio id="mediaAudio" controls style="display:none"></audio>
-  </div>
-  <iframe id="map" src="about:blank"></iframe>
-  <div id="bar">No location yet — waiting for device...</div>
-  <script>
-    const socket = io();
-    const hist = [];
-
-    socket.on("locationUpdate", function(d) {
-      document.getElementById("map").src =
-        "https://maps.google.com/maps?q=" + d.lat + "," + d.lng + "&z=17&output=embed";
-      var s = document.getElementById("status");
-      s.className = "live";
-      s.textContent = "📍 Live · " + d.lat.toFixed(5) + ", " + d.lng.toFixed(5);
-      hist.unshift(d.lat.toFixed(3) + "," + d.lng.toFixed(3) + " @ " + new Date().toLocaleTimeString());
-      document.getElementById("bar").textContent = "Path: " + hist.slice(0,5).join(" → ");
-    });
-
-    socket.on("sosAlert", function(d) {
-      var b = document.getElementById("sosBox");
-      b.style.display = "block";
-      document.getElementById("sosDetail").textContent =
-        d.trigger + " at " + new Date(d.time).toLocaleTimeString();
-      document.getElementById("status").className = "sos";
-      document.getElementById("status").textContent = "🚨 SOS ACTIVE";
-      setTimeout(function(){ b.style.display = "none"; }, 15000);
-    });
-
-    socket.on("sosPhoto", function(d) {
-      var box = document.getElementById("mediaBox");
-      var img = document.getElementById("mediaPhoto");
-      box.style.display = "block";
-      img.style.display = "block";
-      img.src = d.url;
-    });
-
-    socket.on("sosAudio", function(d) {
-      var box = document.getElementById("mediaBox");
-      var audio = document.getElementById("mediaAudio");
-      box.style.display = "block";
-      audio.style.display = "block";
-      audio.src = d.url;
-    });
-
-    socket.on("bluetoothSOS", function(d) {
-      alert("🔵 Bluetooth SOS — " + d.peersFound + " peers found nearby");
-    });
-  </script>
-</body>
-</html>`);
+  res.sendFile(path.join(__dirname, "tracker.html"));
 });
 
 /* =========================
@@ -606,10 +630,8 @@ io.on("connection", (socket) => {
 /* =========================
    🚀 START
 ========================= */
-server.listen(5000, () => {
-  console.log("\n🚀 SafeGuard server running");
-  console.log("   App     → http://localhost:3000");
-  console.log("   API     → http://localhost:5000");
-  console.log("   Tracker → http://localhost:5000/tracker");
-  console.log("   Test    → http://localhost:5000/test\n");
+const PORT = process.env.PORT || 5000;
+
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`SafeGuard server running on port ${PORT}`);
 });

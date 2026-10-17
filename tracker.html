@@ -1,78 +1,429 @@
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>SafeGuard Live Tracker</title>
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #0a0a0f; color: white; font-family: sans-serif; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>SafeGuard — Live Tracker</title>
+
+<script src="/socket.io/socket.io.js"></script>
+
+<style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #0a0a0f;
+      color: white;
+      font-family: system-ui, sans-serif;
+    }
+
+    #topbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: #0f0f1a;
+      border-bottom: 1px solid #1a1a2e;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      font-size: 14px;
+      font-weight: 500;
+      color: #e85d75;
+    }
+
     #status {
-      position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
-      background: #1a0a0e; border: 1px solid #e85d75; border-radius: 20px;
-      padding: 10px 20px; font-size: 13px; color: #e85d75; z-index: 10;
+      font-size: 11px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      background: #1a0a0e;
+      border: 1px solid #e85d75;
+      color: #e85d75;
+    }
+
+    #status.live {
+      background: #14532d;
+      border-color: #4ade80;
+      color: #4ade80;
+    }
+
+    #status.sos {
+      background: #450a0a;
+      border-color: #f87171;
+      color: #f87171;
+    }
+
+    #map {
+      width: 100vw;
+      height: calc(100vh - 90px);
+      border: none;
+      margin-top: 52px;
+    }
+
+    #bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #0f0f1a;
+      border-top: 1px solid #1a1a2e;
+      padding: 8px 16px;
+      font-size: 10px;
+      color: #999;
+      overflow: hidden;
+      text-overflow: ellipsis;
       white-space: nowrap;
     }
-    #sos-banner {
-      display: none; position: fixed; top: 0; left: 0; right: 0;
-      background: #cc0022; color: white; text-align: center;
-      padding: 14px; font-size: 16px; font-weight: 700; z-index: 20;
+
+    #sosBox {
+      display: none;
+      position: fixed;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #450a0a;
+      border: 1px solid #f87171;
+      border-radius: 12px;
+      padding: 12px 20px;
+      text-align: center;
+      z-index: 200;
+      min-width: 240px;
     }
-    #map { width: 100vw; height: calc(100vh - 50px); border: none; }
-    #history {
-      position: fixed; bottom: 0; left: 0; right: 0;
-      background: #0f0f1a; border-top: 1px solid #1a1a2e;
-      padding: 12px 16px; font-size: 11px; color: #666;
+
+    .sos-title {
+      color: #f87171;
+      font-size: 14px;
+      font-weight: 600;
     }
-    #open-maps {
-      position: fixed; bottom: 50px; right: 16px;
-      background: #e85d75; color: white; border: none;
-      border-radius: 25px; padding: 12px 20px;
-      font-size: 13px; font-weight: 700; cursor: pointer;
+
+    .sos-sub {
+      color: #fca5a5;
+      font-size: 11px;
+      margin-top: 3px;
+    }
+
+    #mediaBox {
+      display: none;
+      position: fixed;
+      bottom: 48px;
+      right: 16px;
+      background: #0f0f1a;
+      border: 1px solid #1a1a2e;
+      border-radius: 12px;
+      padding: 10px;
+      z-index: 150;
+      width: 200px;
+    }
+
+    #mediaBox img {
+      width: 100%;
+      border-radius: 8px;
+    }
+
+    #mediaBox audio {
+      width: 100%;
+      margin-top: 6px;
+    }
+
+    #mediaTitle {
+      font-size: 10px;
+      color: #e85d75;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    #openMaps {
+      position: fixed;
+      right: 16px;
+      bottom: 265px;
+      z-index: 120;
+      background: #e85d75;
+      color: white;
+      border: none;
+      border-radius: 25px;
+      padding: 10px 15px;
+      cursor: pointer;
     }
   </style>
 </head>
-<body>
-  <div id="sos-banner">🚨 SOS EMERGENCY ALERT</div>
-  <div id="status">⏳ Waiting for location...</div>
-  <iframe id="map" src="" style="width:100vw;height:calc(100vh - 50px);border:none;"></iframe>
-  <button id="open-maps" onclick="openInMaps()">📍 Open in Maps</button>
-  <div id="history">No location yet</div>
-  <script>
-    let currentLat = null, currentLng = null;
-    const historyLog = [];
 
-    function updateMap(lat, lng) {
-      currentLat = lat; currentLng = lng;
-      document.getElementById('map').src =
-        `https://maps.google.com/maps?q=${lat},${lng}&z=17&output=embed`;
-      document.getElementById('status').innerHTML =
-        `📍 Live: ${lat.toFixed(5)}, ${lng.toFixed(5)} · ${new Date().toLocaleTimeString()}`;
-      historyLog.unshift(`${lat.toFixed(4)}, ${lng.toFixed(4)} at ${new Date().toLocaleTimeString()}`);
-      document.getElementById('history').textContent =
-        'History: ' + historyLog.slice(0, 5).join(' → ');
+<body>
+
+  <div id="topbar">
+    <div class="brand">🛡️ SafeGuard Tracker</div>
+    <div id="status">⏳ Waiting...</div>
+  </div>
+
+  <div id="sosBox">
+    <div class="sos-title">🚨 SOS TRIGGERED</div>
+    <div class="sos-sub" id="sosDetail"></div>
+  </div>
+
+  <div id="mediaBox">
+    <div id="mediaTitle">SOS Evidence</div>
+
+    <img
+      id="mediaPhoto"
+      src=""
+      style="display:none"
+      alt="SOS Photo"
+    >
+
+    <audio
+      id="mediaAudio"
+      controls
+      style="display:none"
+    ></audio>
+  </div>
+
+  <iframe
+    id="map"
+    src="about:blank"
+    title="SafeGuard Location Map"
+  ></iframe>
+
+  <button id="openMaps" onclick="openInMaps()">
+    📍 Open Maps
+  </button>
+
+  <div id="bar">
+    No location yet — waiting for device...
+  </div>
+
+  <script>
+    const socket = io();
+
+    const hist = [];
+
+    let currentLat = null;
+    let currentLng = null;
+    let lastUpdateTime = null;
+    let sosActive = false;
+
+    // =========================
+    // UPDATE TRACKER
+    // =========================
+
+    function updateTracker(data, isLive = true) {
+
+      if (!data) return;
+
+      const lat = Number(data.lat);
+      const lng = Number(data.lng);
+
+      if (
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lng) ||
+        lat < -90 ||
+        lat > 90 ||
+        lng < -180 ||
+        lng > 180
+      ) {
+        console.error("Invalid location received");
+        return;
+      }
+
+      currentLat = lat;
+      currentLng = lng;
+
+      lastUpdateTime = data.timestamp
+        ? new Date(data.timestamp)
+        : new Date();
+
+    const mapUrl =
+  "https://www.openstreetmap.org/export/embed.html?bbox=" +
+  (lng - 0.005) + "," +
+  (lat - 0.005) + "," +
+  (lng + 0.005) + "," +
+  (lat + 0.005) +
+  "&layer=mapnik&marker=" + lat + "," + lng;
+
+document.getElementById("map").src = mapUrl;
+
+      const status = document.getElementById("status");
+
+      if (!sosActive) {
+        status.className = isLive ? "live" : "";
+
+        status.textContent =
+          (isLive ? "📍 Live · " : "📍 Last saved · ") +
+          lat.toFixed(5) + ", " + lng.toFixed(5);
+      }
+
+      hist.unshift(
+        lat.toFixed(4) + "," +
+        lng.toFixed(4) +
+        " @ " + lastUpdateTime.toLocaleTimeString()
+      );
+
+      document.getElementById("bar").textContent =
+        "Path: " + hist.slice(0, 5).join(" → ");
     }
+
+    // =========================
+    // OPEN GOOGLE MAPS
+    // =========================
 
     function openInMaps() {
-      if (currentLat && currentLng)
-        window.open(`https://www.google.com/maps?q=${currentLat},${currentLng}`);
+
+      if (currentLat === null || currentLng === null) {
+        alert("Location not available yet");
+        return;
+      }
+
+      window.open(
+        "https://www.google.com/maps?q=" +
+        currentLat + "," + currentLng,
+        "_blank",
+        "noopener,noreferrer"
+      );
     }
+
+    // =========================
+    // LOAD LAST SAVED LOCATION
+    // =========================
+
+    async function loadLastLocation() {
+
+      try {
+        const response = await fetch("/latest-location");
+
+        if (!response.ok) {
+          throw new Error("Unable to fetch location");
+        }
+
+        const location = await response.json();
+
+        if (location && currentLat === null) {
+          updateTracker(location, false);
+        }
+
+      } catch (error) {
+        console.error("Location fetch error:", error);
+      }
+    }
+
+    // =========================
+    // URL LOCATION SUPPORT
+    // =========================
 
     const params = new URLSearchParams(window.location.search);
-    const urlLat = parseFloat(params.get('lat'));
-    const urlLng = parseFloat(params.get('lng'));
-    if (urlLat && urlLng) {
-      updateMap(urlLat, urlLng);
+
+    const urlLat = params.get("lat");
+    const urlLng = params.get("lng");
+
+    if (
+      urlLat !== null &&
+      urlLng !== null &&
+      urlLat.trim() !== "" &&
+      urlLng.trim() !== ""
+    ) {
+      updateTracker({
+        lat: urlLat,
+        lng: urlLng
+      }, false);
     }
 
-    try {
-      const socket = io(window.location.origin);
-      socket.on('locationUpdate', ({ lat, lng }) => updateMap(lat, lng));
-      socket.on('sosAlert', ({ trigger, time }) => {
-        document.getElementById('sos-banner').style.display = 'block';
-        document.getElementById('sos-banner').textContent =
-          `🚨 SOS — ${trigger} at ${new Date(time).toLocaleTimeString()}`;
-      });
-    } catch(e) {}
+    // =========================
+    // SOCKET CONNECTION
+    // =========================
+
+    socket.on("connect", function() {
+      console.log("Tracker connected:", socket.id);
+    });
+
+    socket.on("connect_error", function(error) {
+      console.error("Socket connection failed:", error.message);
+    });
+
+    // =========================
+    // LIVE LOCATION
+    // =========================
+
+    socket.on("locationUpdate", function(data) {
+      updateTracker(data, true);
+    });
+
+    // =========================
+    // SOS ALERT
+    // =========================
+
+    socket.on("sosAlert", function(data) {
+
+      sosActive = true;
+
+      const box = document.getElementById("sosBox");
+
+      box.style.display = "block";
+
+      const time = data.time
+        ? new Date(data.time).toLocaleTimeString()
+        : new Date().toLocaleTimeString();
+
+      document.getElementById("sosDetail").textContent =
+        (data.trigger || "Emergency") + " at " + time;
+
+      const status = document.getElementById("status");
+
+      status.className = "sos";
+      status.textContent = "🚨 SOS ACTIVE";
+    });
+
+    // =========================
+    // SOS PHOTO
+    // =========================
+
+    socket.on("sosPhoto", function(data) {
+
+      const box = document.getElementById("mediaBox");
+      const img = document.getElementById("mediaPhoto");
+
+      box.style.display = "block";
+      img.style.display = "block";
+      img.src = data.url;
+    });
+
+    // =========================
+    // SOS AUDIO
+    // =========================
+
+    socket.on("sosAudio", function(data) {
+
+      const box = document.getElementById("mediaBox");
+      const audio = document.getElementById("mediaAudio");
+
+      box.style.display = "block";
+      audio.style.display = "block";
+      audio.src = data.url;
+    });
+
+    // =========================
+    // BLUETOOTH SOS
+    // =========================
+
+    socket.on("bluetoothSOS", function(data) {
+
+      alert(
+        "🔵 Bluetooth SOS — " +
+        data.peersFound +
+        " peers found nearby"
+      );
+    });
+
+    // Load previous location when page opens
+    loadLastLocation();
+
   </script>
+
 </body>
 </html>
