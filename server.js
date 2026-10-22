@@ -157,8 +157,8 @@ const sendSMS = async (to, message) => {
 };
 
 const sendWhatsApp = async (to, message) => {
-  // SAFEGUARD DEMO MODE — real WhatsApp sending disabled
-  console.log("🧪 DEMO MODE: WhatsApp blocked — no message sent");
+  // DEMO MODE: Never send real WhatsApp messages.
+  console.log("🧪 DEMO MODE: WhatsApp blocked");
 
   return {
     success: false,
@@ -166,20 +166,6 @@ const sendWhatsApp = async (to, message) => {
     disabled: true,
     demoMode: true
   };
-
-  // Existing Twilio code below is unreachable during demo mode.
-  try {
-    await twilioClient.messages.create({
-      body: message,
-      from: `whatsapp:${(process.env.TWILIO_WHATSAPP_NUMBER || "+14155238886").replace(/^whatsapp:/, "")}`,
-      to: `whatsapp:+91${to}`,
-    });
-    console.log(`✅ WhatsApp sent to ${to}`);
-    return { success: true, number: to };
-  } catch (err) {
-    console.error(`❌ WhatsApp failed to ${to}:`, err.message);
-    return { success: false, number: to, error: err.message };
-  }
 };
 
 const buildSOSMessage = (location, trigger, mediaUrl = null) => {
