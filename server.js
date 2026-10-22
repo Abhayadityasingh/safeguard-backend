@@ -151,25 +151,27 @@ try {
 }
 
 const sendSMS = async (to, message) => {
-  try {
-    await twilioClient.messages.create({
-      body: message,
-      from: process.env.TWILIO_PHONE_NUMBER,
-      to: `+91${to}`,
-    });
-    console.log(`✅ SMS sent to ${to}`);
-    return { success: true, number: to };
-  } catch (err) {
-    console.error(`❌ SMS failed to ${to}:`, err.message);
-    return { success: false, number: to, error: err.message };
-  }
+  // SMS temporarily disabled until explicitly enabled.
+  console.log("SMS disabled — no message attempted");
+  return { success: false, number: to, disabled: true };
 };
 
 const sendWhatsApp = async (to, message) => {
+  // SAFEGUARD DEMO MODE — real WhatsApp sending disabled
+  console.log("🧪 DEMO MODE: WhatsApp blocked — no message sent");
+
+  return {
+    success: false,
+    number: to,
+    disabled: true,
+    demoMode: true
+  };
+
+  // Existing Twilio code below is unreachable during demo mode.
   try {
     await twilioClient.messages.create({
       body: message,
-      from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER || "whatsapp:+14155238886"}`,
+      from: `whatsapp:${(process.env.TWILIO_WHATSAPP_NUMBER || "+14155238886").replace(/^whatsapp:/, "")}`,
       to: `whatsapp:+91${to}`,
     });
     console.log(`✅ WhatsApp sent to ${to}`);
@@ -433,7 +435,7 @@ app.post("/send-alert", async (req, res) => {
 
   const alert = await new Alert({
     contacts, location, trigger,
-    status: smsFailed.length === contacts.length ? "failed" : "sent",
+    status: (smsSentTo.length > 0 || whatsappSentTo.length > 0) ? "sent" : "failed",
     smsSentTo, smsFailed, whatsappSentTo, whatsappFailed,
   }).save();
 
@@ -442,6 +444,7 @@ app.post("/send-alert", async (req, res) => {
 
   res.json({
     message: "Alert processed",
+    accepted: smsSentTo.length > 0 || whatsappSentTo.length > 0,
     sms:      { sent: smsSentTo,      failed: smsFailed },
     whatsapp: { sent: whatsappSentTo, failed: whatsappFailed },
     alertId:  alert._id,
@@ -477,9 +480,15 @@ app.post("/flush-queue", async (req, res) => {
 
     await new Alert({
       contacts: item.contacts, location: item.location, trigger: item.trigger,
-      status: sf.length === item.contacts.length ? "failed" : "sent",
+      status: (ss.length > 0 || ws.length > 0) ? "sent" : "failed",
       smsSentTo: ss, smsFailed: sf, whatsappSentTo: ws, whatsappFailed: wf,
     }).save();
+
+    // Preserve the queued alert if no provider accepted the message.
+    if (ss.length === 0 && ws.length === 0) {
+      results.push({ id: item._id, accepted: false });
+      continue;
+    }
 
     await QueuedAlert.findByIdAndDelete(item._id);
     if (item.location) io.emit("locationUpdate", item.location);
@@ -513,7 +522,9 @@ app.post("/retry-alert/:id", async (req, res) => {
   alert.whatsappSentTo = [...(alert.whatsappSentTo || []), ...nws];
   alert.whatsappFailed = nwf;
   alert.retryCount    += 1;
-  alert.status         = nf.length === 0 ? "sent" : "failed";
+  alert.status         = (
+    alert.smsSentTo.length > 0 || alert.whatsappSentTo.length > 0
+  ) ? "sent" : "failed";
   await alert.save();
 
   res.json({ message: "Retry complete", sms:{sent:ns,failed:nf}, whatsapp:{sent:nws,failed:nwf} });
